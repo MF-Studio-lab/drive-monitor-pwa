@@ -239,7 +239,7 @@ class DriveMonitorApp {
     document.getElementById('calibBar').style.setProperty('--progress', '0%');
   }
 
-  async startCalibration() {
+  async startCalibrationProcess() {
     if (this.isCalibrating) return;
     this.isCalibrating = true;
     
@@ -539,5 +539,6 @@ window.app = app;
 
 // Expose calibration start
 app.startCalibration = () => app.startCalibration();
+app.startCalibrationProcess = () => app.startCalibrationProcess();
 
 export { app };

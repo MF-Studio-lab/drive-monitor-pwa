@@ -144,8 +144,8 @@ body {
 .modal-content strong { color: var(--text); }
 
 .calib-progress { margin: 16px 0; }
-.calib-bar { height: 6px; background: var(--border); border-radius: 3px; overflow: hidden; }
-.calib-bar::after { content: ''; display: block; height: 100%; width: 0%; background: var(--accent); transition: width 0.1s linear; }
+.calib-bar { height: 6px; background: var(--border); border-radius: 3px; overflow: hidden; position: relative; }
+.calib-bar::after { content: ''; display: block; height: 100%; width: var(--progress, 0%); background: var(--accent); transition: width 0.1s linear; }
 #calibStatus { font-size: 0.8rem; color: var(--text-muted); text-align: center; margin-bottom: 16px; }
 
 /* Responsive */

@@ -23,6 +23,7 @@
         <span id="gpsStatus" class="status-dot gps"></span>
         <span id="sensorStatus" class="status-dot sensor"></span>
         <span id="recStatus" class="status-dot rec"></span>
+        <button id="btnCalibrate" class="btn btn-ghost" onclick="app.startCalibration()" title="重新校準感測器">校準</button>
       </div>
     </header>
 
@@ -151,7 +152,7 @@
           <div class="calib-bar" id="calibBar"></div>
         </div>
         <div id="calibStatus">等待開始...</div>
-        <button class="btn btn-primary" onclick="app.startCalibration()">開始校準 (3秒)</button>
+        <button class="btn btn-primary" onclick="app.startCalibrationProcess()">開始校準 (3秒)</button>
       </div>
     </div>
   </div>
