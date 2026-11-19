@@ -417,6 +417,12 @@ class SimpleChart {
     ctx.lineTo(w - padding.right, h - padding.bottom);
     ctx.stroke();
     
+    // Draw series - need timeData first for dynamic time label
+    const timeData = this.data[0];
+    const maxTime = Math.max(...timeData);
+    const minTime = Math.min(...timeData);
+    const timeRange = maxTime - minTime || 1;
+    
     // X axis label (time) - dynamic based on actual data range
     ctx.fillStyle = '#8b949e';
     ctx.font = '10px monospace';
@@ -426,12 +432,6 @@ class SimpleChart {
       ? `時間 (最近 ${Math.round(timeSpanSec / 60)} 分鐘)`
       : `時間 (最近 ${Math.round(timeSpanSec)} 秒)`;
     ctx.fillText(timeLabel, w / 2, h - 5);
-    
-    // Draw series
-    const timeData = this.data[0];
-    const maxTime = Math.max(...timeData);
-    const minTime = Math.min(...timeData);
-    const timeRange = maxTime - minTime || 1;
     
     for (let i = 1; i < this.data.length; i++) {
       const seriesData = this.data[i];
