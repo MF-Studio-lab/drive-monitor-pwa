@@ -1,0 +1,166 @@
+:root {
+  --bg: #0d1117;
+  --bg-elevated: #161b22;
+  --border: #30363d;
+  --text: #e6edf3;
+  --text-muted: #8b949e;
+  --accent: #58a6ff;
+  --accent-dim: #1f6feb;
+  --success: #3fb950;
+  --warning: #d29922;
+  --danger: #f85149;
+  --purple: #a371f7;
+  --orange: #f78166;
+  --radius: 12px;
+  --shadow: 0 4px 12px rgba(0,0,0,0.4);
+  --transition: 0.15s ease;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans TC", sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  line-height: 1.5;
+  min-height: 100vh;
+  overscroll-behavior: none;
+}
+
+.app { display: flex; flex-direction: column; min-height: 100vh; }
+
+/* Header */
+.header {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 12px 16px; background: var(--bg-elevated);
+  border-bottom: 1px solid var(--border);
+  position: sticky; top: 0; z-index: 10;
+}
+.title { font-size: 1.25rem; font-weight: 600; letter-spacing: -0.02em; }
+.status-row { display: flex; gap: 8px; }
+.status-dot { width: 10px; height: 10px; border-radius: 50%; box-shadow: 0 0 8px currentColor; transition: var(--transition); }
+.status-dot.gps { background: var(--danger); }
+.status-dot.gps.active { background: var(--success); }
+.status-dot.sensor { background: var(--danger); }
+.status-dot.sensor.active { background: var(--success); }
+.status-dot.rec { background: var(--border); }
+.status-dot.rec.active { background: var(--danger); animation: pulse 1s infinite; }
+@keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.5; } }
+
+/* Dashboard */
+.dashboard { flex: 1; padding: 16px; overflow-y: auto; }
+
+/* Cards */
+.cards-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 16px; }
+.card {
+  background: var(--bg-elevated); border: 1px solid var(--border); border-radius: var(--radius);
+  padding: 16px; box-shadow: var(--shadow);
+}
+.card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+.card-header h2 { font-size: 0.875rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); }
+.legend { display: flex; gap: 16px; font-size: 0.7rem; }
+.legend-item { display: flex; align-items: center; gap: 6px; }
+.legend-color { width: 12px; height: 12px; border-radius: 2px; }
+
+/* Value Cards */
+.speed-card, .gforce-card, .comfort-card { text-align: center; }
+.card-label { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-muted); margin-bottom: 8px; }
+.card-value { font-size: 2.5rem; font-weight: 700; font-variant-numeric: tabular-nums; line-height: 1.1; font-family: "SF Mono", "Fira Code", monospace; }
+.speed-card .card-value { color: var(--accent); }
+.gforce-card .card-value { color: var(--orange); }
+.comfort-card .card-value { color: var(--success); }
+.card-unit { font-size: 0.75rem; color: var(--text-muted); margin-top: -4px; }
+.card-sub { font-size: 0.7rem; color: var(--text-muted); margin-top: 4px; }
+
+/* Chart Cards */
+.chart-card { margin-bottom: 16px; }
+.chart-card canvas { width: 100%; height: auto; display: block; }
+
+/* Env Cards */
+.env-cards { grid-template-columns: 1fr 1fr 1fr; }
+.weather-card { text-align: center; }
+.weather-main { display: flex; align-items: baseline; justify-content: center; gap: 8px; margin: 8px 0; }
+.weather-icon { font-size: 2.5rem; }
+.weather-temp { font-size: 2rem; font-weight: 600; font-variant-numeric: tabular-nums; }
+.weather-desc { font-size: 0.875rem; color: var(--text-muted); text-transform: capitalize; }
+.weather-details { display: flex; justify-content: center; gap: 16px; margin-top: 8px; font-size: 0.7rem; color: var(--text-muted); }
+
+.road-card { text-align: center; }
+.road-status { font-size: 1.1rem; font-weight: 500; margin: 8px 0; }
+.road-status.good { color: var(--success); }
+.road-status.moderate { color: var(--warning); }
+.road-status.poor { color: var(--danger); }
+.road-status.unknown { color: var(--text-muted); }
+.road-details { font-size: 0.7rem; color: var(--text-muted); }
+
+.location-card { text-align: center; }
+.coords { font-family: "SF Mono", "Fira Code", monospace; font-size: 0.75rem; color: var(--text-muted); }
+.address { font-size: 0.75rem; color: var(--text); margin-top: 4px; word-break: break-word; }
+
+/* Controls */
+.controls { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin: 16px 0; padding: 0 4px; }
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  padding: 12px 20px; border-radius: 8px; border: 1px solid transparent;
+  font-size: 0.875rem; font-weight: 500; cursor: pointer; transition: var(--transition);
+  touch-action: manipulation; min-height: 44px;
+}
+.btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.btn-primary { background: var(--accent); color: #fff; }
+.btn-primary:hover:not(:disabled) { background: var(--accent-dim); }
+.btn-danger { background: var(--danger); color: #fff; }
+.btn-danger:hover:not(:disabled) { background: #f85149; filter: brightness(1.1); }
+.btn-secondary { background: var(--bg); color: var(--text); border-color: var(--border); }
+.btn-secondary:hover:not(:disabled) { background: var(--bg-elevated); }
+.btn-ghost { background: transparent; color: var(--text-muted); }
+.btn-ghost:hover:not(:disabled) { color: var(--text); background: var(--bg-elevated); }
+
+/* Trips */
+.trips-card { margin-top: 8px; }
+.trip-list { max-height: 300px; overflow-y: auto; }
+.trip-item {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 12px; border-bottom: 1px solid var(--border);
+  font-size: 0.8rem;
+}
+.trip-item:last-child { border-bottom: none; }
+.trip-info { display: flex; flex-direction: column; gap: 2px; }
+.trip-date { font-weight: 500; }
+.trip-meta { color: var(--text-muted); font-size: 0.7rem; }
+.trip-actions { display: flex; gap: 8px; }
+.trip-btn { padding: 6px 10px; font-size: 0.65rem; border-radius: 6px; }
+
+/* Modals */
+.modal { position: fixed; inset: 0; background: rgba(0,0,0,0.8); display: flex; align-items: center; justify-content: center; z-index: 100; padding: 16px; }
+.modal.hidden { display: none; }
+.modal-content {
+  background: var(--bg-elevated); border: 1px solid var(--border); border-radius: var(--radius);
+  padding: 24px; max-width: 360px; width: 100%; box-shadow: var(--shadow);
+}
+.modal-content h2 { margin-bottom: 8px; font-size: 1.1rem; }
+.modal-content p { color: var(--text-muted); margin-bottom: 16px; font-size: 0.875rem; line-height: 1.6; }
+.modal-content ul { margin: 16px 0; padding-left: 20px; font-size: 0.8rem; color: var(--text-muted); }
+.modal-content li { margin: 8px 0; }
+.modal-content strong { color: var(--text); }
+
+.calib-progress { margin: 16px 0; }
+.calib-bar { height: 6px; background: var(--border); border-radius: 3px; overflow: hidden; }
+.calib-bar::after { content: ''; display: block; height: 100%; width: 0%; background: var(--accent); transition: width 0.1s linear; }
+#calibStatus { font-size: 0.8rem; color: var(--text-muted); text-align: center; margin-bottom: 16px; }
+
+/* Responsive */
+@media (max-width: 480px) {
+  .cards-row, .env-cards { grid-template-columns: 1fr; }
+  .card-value { font-size: 2rem; }
+  .controls { flex-direction: column; }
+  .btn { width: 100%; }
+}
+
+/* uPlot overrides */
+.u-over { background: rgba(255,255,255,0.02); }
+.u-select { background: rgba(88,166,255,0.15); }
+.u-legend { background: var(--bg-elevated) !important; border-color: var(--border) !important; color: var(--text) !important; }
+.u-title { fill: var(--text-muted) !important; font-size: 11px !important; }
+.u-axis-label { fill: var(--text-muted) !important; }
+.u-grid { stroke: var(--border) !important; }
+.u-tick { stroke: var(--border) !important; }

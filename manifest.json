@@ -1,0 +1,16 @@
+{
+  "name": "駕駛監控儀表板",
+  "short_name": "駕駛監控",
+  "description": "手機感測器即時監控駕駛行為、G力、震動、速度、天氣、路況",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#0d1117",
+  "theme_color": "#0d1117",
+  "orientation": "portrait-primary",
+  "icons": [
+    {"src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable"},
+    {"src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable"}
+  ],
+  "categories": ["utilities", "automotive"],
+  "screenshots": []
+}

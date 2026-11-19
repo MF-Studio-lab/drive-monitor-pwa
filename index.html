@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="theme-color" content="#0d1117">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="駕駛監控">
+  <link rel="manifest" href="./manifest.json">
+  <link rel="icon" type="image/png" sizes="192x192" href="./icon-192.png">
+  <link rel="apple-touch-icon" href="./icon-192.png">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/uplot@1.6.27/dist/uPlot.min.css">
+  <link rel="stylesheet" href="./styles.css">
+  <title>駕駛監控儀表板</title>
+</head>
+<body>
+  <div class="app">
+    <!-- Header -->
+    <header class="header">
+      <h1 class="title">駕駛監控</h1>
+      <div class="status-row">
+        <span id="gpsStatus" class="status-dot gps"></span>
+        <span id="sensorStatus" class="status-dot sensor"></span>
+        <span id="recStatus" class="status-dot rec"></span>
+      </div>
+    </header>
+
+    <!-- Main Dashboard -->
+    <main class="dashboard">
+      <!-- Speed & G-Force Cards -->
+      <section class="cards-row">
+        <article class="card speed-card">
+          <div class="card-label">即時速度</div>
+          <div class="card-value" id="speedValue">0</div>
+          <div class="card-unit">km/h</div>
+          <div class="card-sub" id="maxSpeed">最高: 0 km/h</div>
+        </article>
+        <article class="card gforce-card">
+          <div class="card-label">綜合 G 力</div>
+          <div class="card-value" id="gforceValue">0.00</div>
+          <div class="card-unit">G</div>
+          <div class="card-sub" id="peakG">峰值: 0.00 G</div>
+        </article>
+        <article class="card comfort-card">
+          <div class="card-label">舒適度指數</div>
+          <div class="card-value" id="comfortValue">100</div>
+          <div class="card-unit">分</div>
+          <div class="card-sub" id="comfortLabel">平穩</div>
+        </article>
+      </section>
+
+      <!-- Acceleration Vector (X/Y/Z) -->
+      <section class="card chart-card accel-card">
+        <div class="card-header">
+          <h2>加速度向量 (m/s²)</h2>
+          <div class="legend" id="accelLegend"></div>
+        </div>
+        <canvas id="accelChart" width="600" height="200"></canvas>
+      </section>
+
+      <!-- G-Force History (Lateral/Longitudinal/Vertical) -->
+      <section class="card chart-card gforce-history-card">
+        <div class="card-header">
+          <h2>G 力歷程</h2>
+          <div class="legend" id="gforceLegend"></div>
+        </div>
+        <canvas id="gforceChart" width="600" height="200"></canvas>
+      </section>
+
+      <!-- Vibration Spectrum -->
+      <section class="card chart-card vibe-card">
+        <div class="card-header">
+          <h2>震動頻譜 (Hz)</h2>
+          <div class="legend" id="vibeLegend"></div>
+        </div>
+        <canvas id="vibeChart" width="600" height="160"></canvas>
+      </section>
+
+      <!-- Speed Chart -->
+      <section class="card chart-card speed-chart-card">
+        <div class="card-header">
+          <h2>速度歷程</h2>
+          <div class="legend" id="speedLegend"></div>
+        </div>
+        <canvas id="speedChart" width="600" height="160"></canvas>
+      </section>
+
+      <!-- Environmental Info -->
+      <section class="cards-row env-cards">
+        <article class="card weather-card">
+          <div class="card-label">天氣</div>
+          <div class="weather-main">
+            <span id="weatherIcon" class="weather-icon">☀️</span>
+            <span id="weatherTemp" class="weather-temp">--°C</span>
+          </div>
+          <div id="weatherDesc" class="weather-desc">載入中...</div>
+          <div class="weather-details">
+            <span id="humidity">濕度: --%</span>
+            <span id="wind">風速: -- m/s</span>
+          </div>
+        </article>
+        <article class="card road-card">
+          <div class="card-label">路況</div>
+          <div id="roadStatus" class="road-status">載入中...</div>
+          <div id="roadDetails" class="road-details"></div>
+        </article>
+        <article class="card location-card">
+          <div class="card-label">位置</div>
+          <div id="coords" class="coords">等待 GPS...</div>
+          <div id="address" class="address"></div>
+        </article>
+      </section>
+
+      <!-- Controls -->
+      <section class="controls">
+        <button id="btnStart" class="btn btn-primary" onclick="app.start()">開始記錄</button>
+        <button id="btnStop" class="btn btn-danger" onclick="app.stop()" disabled>停止記錄</button>
+        <button id="btnExport" class="btn btn-secondary" onclick="app.exportData()">匯出資料</button>
+        <button id="btnClear" class="btn btn-ghost" onclick="app.clearData()">清除本地資料</button>
+      </section>
+
+      <!-- Trip List -->
+      <section class="card trips-card">
+        <div class="card-header">
+          <h2>歷史行程</h2>
+        </div>
+        <div id="tripList" class="trip-list"></div>
+      </section>
+    </main>
+
+    <!-- Permission Modal -->
+    <div id="permModal" class="modal hidden">
+      <div class="modal-content">
+        <h2>需要權限</h2>
+        <p>請允許以下權限以使用完整功能：</p>
+        <ul>
+          <li><strong>體感與方向感測器</strong> — 讀取加速度、陀螺儀、磁力計</li>
+          <li><strong>位置資訊</strong> — 取得 GPS 速度與座標</li>
+        </ul>
+        <button class="btn btn-primary" onclick="app.requestPermissions()">授權並開始</button>
+      </div>
+    </div>
+
+    <!-- Calibration Modal -->
+    <div id="calibModal" class="modal hidden">
+      <div class="modal-content">
+        <h2>感測器校準</h2>
+        <p>請將手機<strong>平放靜止</strong>於車內固定位置（如手機架），點擊下方開始校準。</p>
+        <div class="calib-progress">
+          <div class="calib-bar" id="calibBar"></div>
+        </div>
+        <div id="calibStatus">等待開始...</div>
+        <button class="btn btn-primary" onclick="app.startCalibration()">開始校準 (3秒)</button>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="./app.js"></script>
+  <script>
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('./sw.js').catch(console.error);
+    }
+  </script>
+</body>
+</html>
