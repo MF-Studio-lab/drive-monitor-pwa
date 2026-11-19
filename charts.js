@@ -269,9 +269,11 @@ export class ChartManager {
     
     for (const s of trip.sensorData) {
       this.pushData(accelData, s.t, s.ax, s.ay, s.az);
-      const g = Math.sqrt(s.gx*s.gx + s.gy*s.gy + (s.gz+1)*(s.gz+1)) - 1;
-      this.pushData(gforceData, s.t, s.gy, s.gx, s.gz);
-      this.pushData(vibeData, s.t, Math.sqrt(s.ax*s.ax + s.ay*s.ay + s.az*s.az));
+      const g = Math.sqrt(s.gx*s.gx + s.gy*s.gy + (s.gz-1)*(s.gz-1));
+      this.pushData(gforceData, s.t, s.gy, s.gx, s.gz - 1);
+      // Vibration: net acceleration excluding gravity
+      const netAz = s.az - 9.81;
+      this.pushData(vibeData, s.t, Math.sqrt(s.ax*s.ax + s.ay*s.ay + netAz*netAz));
     }
     
     for (const g of trip.gpsData) {
@@ -415,11 +417,15 @@ class SimpleChart {
     ctx.lineTo(w - padding.right, h - padding.bottom);
     ctx.stroke();
     
-    // X axis label (time)
+    // X axis label (time) - dynamic based on actual data range
     ctx.fillStyle = '#8b949e';
     ctx.font = '10px monospace';
     ctx.textAlign = 'center';
-    ctx.fillText('時間 (最近 30 秒)', w / 2, h - 5);
+    const timeSpanSec = (maxTime - minTime) / 1000;
+    const timeLabel = timeSpanSec >= 60 
+      ? `時間 (最近 ${Math.round(timeSpanSec / 60)} 分鐘)`
+      : `時間 (最近 ${Math.round(timeSpanSec)} 秒)`;
+    ctx.fillText(timeLabel, w / 2, h - 5);
     
     // Draw series
     const timeData = this.data[0];

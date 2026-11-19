@@ -106,8 +106,11 @@ class DriveMonitorApp {
     const gy = ay / 9.81;
     const gz = az / 9.81;
     
-    // Combined G-force (vector magnitude minus 1G gravity)
-    const combinedG = Math.sqrt(gx*gx + gy*gy + (gz+1)*(gz+1)) - 1;
+    // Combined G-force (magnitude of net acceleration, excluding gravity)
+    // gz is calibrated acceleration including gravity (~1.0 at rest)
+    // We want net G-force: sqrt(gx² + gy² + (gz-1)²)
+    // At rest: gx=0, gy=0, gz=1.0 → combinedG=0
+    const combinedG = Math.sqrt(gx*gx + gy*gy + (gz-1)*(gz-1));
     
     // Update UI
     document.getElementById('gforceValue').textContent = Math.max(0, combinedG).toFixed(2);
@@ -122,7 +125,10 @@ class DriveMonitorApp {
     // Update charts
     const timestamp = Date.now();
     this.charts.updateAccel(timestamp, ax, ay, az);
-    this.charts.updateGForce(timestamp, gx, gy, gz);
+    // G-force chart shows NET G-force (excluding gravity, rest=0)
+    // gz is calibrated acceleration including gravity (~1.0 at rest)
+    // Net vertical = gz - 1
+    this.charts.updateGForce(timestamp, gx, gy, gz - 1);
     
     // Vibration analysis (high-frequency components)
     this.updateVibration(ax, ay, az, timestamp);
@@ -186,17 +192,19 @@ class DriveMonitorApp {
   }
 
   updateVibration(ax, ay, az, timestamp) {
-    // Simple vibration magnitude (high-pass filtered conceptually)
-    // We'll use a rolling buffer for FFT in charts.js
-    this.charts.updateVibration(timestamp, Math.sqrt(ax*ax + ay*ay + az*az));
+    // Simple vibration magnitude (net acceleration excluding gravity)
+    // az includes gravity (~9.81 at rest), so subtract 9.81 for net vertical
+    const netAz = az - 9.81;
+    this.charts.updateVibration(timestamp, Math.sqrt(ax*ax + ay*ay + netAz*netAz));
   }
 
   updateComfort(gx, gy, gz) {
     // Comfort score: 100 - penalty for lateral/longitudinal/vertical jerk
-    // Simplified: based on G-force magnitude and rate of change
+    // gz is calibrated acceleration including gravity (~1.0 at rest)
+    // Net vertical deviation = |gz - 1|
     const lateralG = Math.abs(gy);
     const longG = Math.abs(gx);
-    const vertG = Math.abs(gz + 1) - 1; // deviation from 1G
+    const vertG = Math.abs(gz - 1); // deviation from 1G (rest state)
     
     const penalty = (lateralG * 15) + (longG * 10) + (vertG * 5);
     const score = Math.max(0, Math.min(100, 100 - penalty));
@@ -394,7 +402,7 @@ class DriveMonitorApp {
     
     const sensor = this.currentTrip.sensorData;
     for (const s of sensor) {
-      const g = Math.sqrt(s.gx*s.gx + s.gy*s.gy + (s.gz+1)*(s.gz+1)) - 1;
+      const g = Math.sqrt(s.gx*s.gx + s.gy*s.gy + (s.gz-1)*(s.gz-1));
       maxG = Math.max(maxG, g);
     }
     
@@ -402,7 +410,7 @@ class DriveMonitorApp {
     for (const s of sensor) {
       const lateralG = Math.abs(s.gy);
       const longG = Math.abs(s.gx);
-      const vertG = Math.abs(s.gz + 1) - 1;
+      const vertG = Math.abs(s.gz - 1); // deviation from 1G
       const penalty = (lateralG * 15) + (longG * 10) + (vertG * 5);
       totalComfort += Math.max(0, 100 - penalty);
       comfortCount++;
