@@ -552,8 +552,7 @@ const app = new DriveMonitorApp();
 window.app = app;
 
 // Expose calibration start
-app.startCalibration = () => app.startCalibration();
-app.startCalibrationProcess = () => app.startCalibrationProcess();
-app.startSensors = () => app.startSensors();
-
+// Note: startCalibration, startCalibrationProcess, startSensors are already class methods
+// They are accessible via app.methodName() without explicit export
+// The following assignments were causing infinite recursion - removed
 export { app };
