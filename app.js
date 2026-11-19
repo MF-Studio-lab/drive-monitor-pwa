@@ -26,7 +26,7 @@ class DriveMonitorApp {
   async init() {
     await this.storage.init();
     this.setupEventListeners();
-    this.charts.init();
+    await this.charts.init();
     this.loadTrips();
     this.checkPermissions();
     
