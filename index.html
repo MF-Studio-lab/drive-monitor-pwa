@@ -24,6 +24,7 @@
         <span id="sensorStatus" class="status-dot sensor"></span>
         <span id="recStatus" class="status-dot rec"></span>
         <button id="btnCalibrate" class="btn btn-ghost" onclick="app.startCalibration()" title="重新校準感測器">校準</button>
+        <button id="btnStartSensors" class="btn btn-primary" onclick="app.startSensors()" style="display:none">啟動感測器</button>
       </div>
     </header>
 
@@ -139,7 +140,10 @@
           <li><strong>體感與方向感測器</strong> — 讀取加速度、陀螺儀、磁力計</li>
           <li><strong>位置資訊</strong> — 取得 GPS 速度與座標</li>
         </ul>
-        <button class="btn btn-primary" onclick="app.requestPermissions()">授權並開始</button>
+        <p style="font-size:0.8rem;color:var(--text-muted);margin:12px 0">
+          點擊下方按鈕將彈出瀏覽器權限提示
+        </p>
+        <button class="btn btn-primary" onclick="app.requestPermissions()">授權感測器與 GPS</button>
       </div>
     </div>
 

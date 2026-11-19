@@ -22,8 +22,10 @@ export class SensorManager {
     // Check sensor permission (iOS 13+ requires request)
     if (typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission === 'function') {
       try {
-        const perm = await DeviceMotionEvent.requestPermission();
-        perms.sensors = perm === 'granted';
+        // Just check current permission state without prompting
+        // DeviceMotionEvent.requestPermission() will prompt, so we can't use it for checking
+        // For now, assume sensors available on iOS if API exists
+        perms.sensors = true;
       } catch {
         perms.sensors = false;
       }

@@ -58,8 +58,10 @@ class DriveMonitorApp {
     
     if (!perms.sensors || !perms.gps) {
       this.showModal('permModal');
+      document.getElementById('btnStartSensors').style.display = 'inline-flex';
     } else {
       this.hideModal('permModal');
+      document.getElementById('btnStartSensors').style.display = 'none';
       await this.sensors.start();
       this.startCalibration();
     }
@@ -71,9 +73,16 @@ class DriveMonitorApp {
     
     if (perms.sensors && perms.gps) {
       this.hideModal('permModal');
+      document.getElementById('btnStartSensors').style.display = 'none';
       await this.sensors.start();
       this.startCalibration();
+    } else {
+      document.getElementById('btnStartSensors').style.display = 'inline-flex';
     }
+  }
+
+  async startSensors() {
+    await this.requestPermissions();
   }
 
   updatePermissionUI(perms) {
@@ -540,5 +549,6 @@ window.app = app;
 // Expose calibration start
 app.startCalibration = () => app.startCalibration();
 app.startCalibrationProcess = () => app.startCalibrationProcess();
+app.startSensors = () => app.startSensors();
 
 export { app };
