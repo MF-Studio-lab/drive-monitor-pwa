@@ -20,7 +20,12 @@ class DriveMonitorApp {
     this.weatherUpdateInterval = null;
     this.roadUpdateInterval = null;
     
-    this.init();
+    this.init().catch(err => {
+      console.error('App init failed:', err);
+      // Even if init fails, try to show permission modal so user can interact
+      this.showModal('permModal');
+      document.getElementById('btnStartSensors').style.display = 'inline-flex';
+    });
   }
 
   async init() {
@@ -28,7 +33,7 @@ class DriveMonitorApp {
     this.setupEventListeners();
     await this.charts.init();
     this.loadTrips();
-    this.checkPermissions();
+    await this.checkPermissions();
     
     // Start periodic updates
     this.startPeriodicUpdates();

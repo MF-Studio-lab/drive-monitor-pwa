@@ -40,7 +40,9 @@ export class SensorManager {
       perms.gps = perm.state === 'granted';
       perm.onchange = () => this.checkPermissions().then(p => this.notifyPermChange(p));
     } catch {
-      perms.gps = 'geolocation' in navigator;
+      // navigator.permissions not supported or geolocation not supported
+      // Do NOT assume permission is granted just because API exists
+      perms.gps = false;
     }
     
     this.permissions = perms;
