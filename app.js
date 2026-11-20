@@ -28,6 +28,9 @@ class DriveMonitorApp {
       baseScore: 100
     };
     
+    // Sampling settings
+    this.sampleInterval = 50; // ms (default 50ms = 20Hz)
+    
     this.init().catch(err => {
       console.error('App init failed:', err);
       // Even if init fails, try to show permission modal so user can interact
@@ -69,7 +72,7 @@ class DriveMonitorApp {
   }
 
   setupComfortSettings() {
-    const inputs = ['lateralWeight', 'longWeight', 'vertWeight', 'baseScore'];
+    const inputs = ['lateralWeight', 'longWeight', 'vertWeight', 'baseScore', 'sampleInterval'];
     inputs.forEach(id => {
       const el = document.getElementById(id);
       if (el) {
@@ -81,6 +84,7 @@ class DriveMonitorApp {
             case 'longWeight': this.comfortWeights.longitudinal = value; break;
             case 'vertWeight': this.comfortWeights.vertical = value; break;
             case 'baseScore': this.comfortWeights.baseScore = value; break;
+            case 'sampleInterval': this.sampleInterval = value; break;
           }
         });
       }
@@ -126,6 +130,13 @@ class DriveMonitorApp {
   }
 
   handleSensorData(data) {
+    // Throttle based on sample interval setting
+    const now = Date.now();
+    if (this._lastSampleTime && now - this._lastSampleTime < this.sampleInterval) {
+      return; // Skip this sample
+    }
+    this._lastSampleTime = now;
+    
     // Apply calibration offset
     const ax = data.acceleration.x - this.calibrationData.x;
     const ay = data.acceleration.y - this.calibrationData.y;
@@ -173,7 +184,12 @@ class DriveMonitorApp {
         ax, ay, az,
         gx, gy, gz,
         rot: data.rotation,
-        interval: data.interval
+        interval: data.interval,
+        // Add GPS data if available
+        lat: this.sensors.lastGPS?.latitude ?? null,
+        lon: this.sensors.lastGPS?.longitude ?? null,
+        speed: this.sensors.lastGPS ? this.sensors.lastGPS.speed * 3.6 : null,
+        heading: this.sensors.lastGPS?.heading ?? null
       });
     }
   }

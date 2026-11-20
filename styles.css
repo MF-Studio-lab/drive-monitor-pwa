@@ -137,6 +137,10 @@ body {
   font-size: 0.875rem; font-weight: 600;
   color: var(--accent); min-width: 2.5em; text-align: right;
 }
+.setting-unit {
+  font-size: 0.75rem; color: var(--text-muted);
+  margin-left: 4px;
+}
 
 /* Trips */
 .trips-card { margin-top: 8px; }
