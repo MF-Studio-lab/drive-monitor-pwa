@@ -114,6 +114,43 @@
         </article>
       </section>
 
+      <!-- Comfort Settings -->
+      <section class="card comfort-settings-card">
+        <div class="card-header">
+          <h2>舒適度調整</h2>
+        </div>
+        <div class="comfort-settings">
+          <div class="setting-row">
+            <label>橫向敏感度</label>
+            <div class="setting-control">
+              <input type="range" id="lateralWeight" min="5" max="30" value="15" step="1">
+              <span id="lateralWeightValue">15</span>
+            </div>
+          </div>
+          <div class="setting-row">
+            <label>縱向敏感度</label>
+            <div class="setting-control">
+              <input type="range" id="longWeight" min="5" max="30" value="10" step="1">
+              <span id="longWeightValue">10</span>
+            </div>
+          </div>
+          <div class="setting-row">
+            <label>垂向敏感度</label>
+            <div class="setting-control">
+              <input type="range" id="vertWeight" min="1" max="20" value="5" step="1">
+              <span id="vertWeightValue">5</span>
+            </div>
+          </div>
+          <div class="setting-row">
+            <label>基準分數</label>
+            <div class="setting-control">
+              <input type="range" id="baseScore" min="80" max="100" value="100" step="1">
+              <span id="baseScoreValue">100</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
       <!-- Controls -->
       <section class="controls">
         <button id="btnStart" class="btn btn-primary" onclick="app.start()">開始記錄</button>

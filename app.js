@@ -20,6 +20,14 @@ class DriveMonitorApp {
     this.weatherUpdateInterval = null;
     this.roadUpdateInterval = null;
     
+    // Comfort settings (configurable weights)
+    this.comfortWeights = {
+      lateral: 15,
+      longitudinal: 10,
+      vertical: 5,
+      baseScore: 100
+    };
+    
     this.init().catch(err => {
       console.error('App init failed:', err);
       // Even if init fails, try to show permission modal so user can interact
@@ -49,10 +57,32 @@ class DriveMonitorApp {
     // Permission changes
     this.sensors.onPermissionChange((perms) => this.updatePermissionUI(perms));
     
+    // Comfort settings sliders
+    this.setupComfortSettings();
+    
     // Visibility change - pause/resume
     document.addEventListener('visibilitychange', () => {
       if (document.hidden && this.isRecording) {
         // Keep recording in background if possible
+      }
+    });
+  }
+
+  setupComfortSettings() {
+    const inputs = ['lateralWeight', 'longWeight', 'vertWeight', 'baseScore'];
+    inputs.forEach(id => {
+      const el = document.getElementById(id);
+      if (el) {
+        el.addEventListener('input', (e) => {
+          const value = parseInt(e.target.value);
+          document.getElementById(id + 'Value').textContent = value;
+          switch (id) {
+            case 'lateralWeight': this.comfortWeights.lateral = value; break;
+            case 'longWeight': this.comfortWeights.longitudinal = value; break;
+            case 'vertWeight': this.comfortWeights.vertical = value; break;
+            case 'baseScore': this.comfortWeights.baseScore = value; break;
+          }
+        });
       }
     });
   }
@@ -206,8 +236,10 @@ class DriveMonitorApp {
     const longG = Math.abs(gx);
     const vertG = Math.abs(gz - 1); // deviation from 1G (rest state)
     
-    const penalty = (lateralG * 15) + (longG * 10) + (vertG * 5);
-    const score = Math.max(0, Math.min(100, 100 - penalty));
+    // Use configurable weights
+    const w = this.comfortWeights;
+    const penalty = (lateralG * w.lateral) + (longG * w.longitudinal) + (vertG * w.vertical);
+    const score = Math.max(0, Math.min(w.baseScore, w.baseScore - penalty));
     
     document.getElementById('comfortValue').textContent = Math.round(score);
     
@@ -406,13 +438,14 @@ class DriveMonitorApp {
       maxG = Math.max(maxG, g);
     }
     
-    // Comfort average (simplified)
+    // Comfort average (simplified) - use configurable weights
     for (const s of sensor) {
       const lateralG = Math.abs(s.gy);
       const longG = Math.abs(s.gx);
       const vertG = Math.abs(s.gz - 1); // deviation from 1G
-      const penalty = (lateralG * 15) + (longG * 10) + (vertG * 5);
-      totalComfort += Math.max(0, 100 - penalty);
+      const w = this.comfortWeights;
+      const penalty = (lateralG * w.lateral) + (longG * w.longitudinal) + (vertG * w.vertical);
+      totalComfort += Math.max(0, w.baseScore - penalty);
       comfortCount++;
     }
     

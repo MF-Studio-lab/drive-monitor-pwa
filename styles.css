@@ -115,6 +115,29 @@ body {
 .btn-ghost { background: transparent; color: var(--text-muted); }
 .btn-ghost:hover:not(:disabled) { color: var(--text); background: var(--bg-elevated); }
 
+/* Comfort Settings Card */
+.comfort-settings-card { margin-bottom: 16px; }
+.comfort-settings { display: flex; flex-direction: column; gap: 12px; }
+.setting-row {
+  display: flex; align-items: center; gap: 12px;
+  flex-wrap: wrap;
+}
+.setting-row label {
+  font-size: 0.75rem; font-weight: 500; color: var(--text-muted);
+  min-width: 80px; white-space: nowrap;
+}
+.setting-control {
+  display: flex; align-items: center; gap: 8px; flex: 1; min-width: 0;
+}
+.setting-control input[type="range"] {
+  flex: 1; accent-color: var(--accent);
+}
+.setting-control span {
+  font-family: "SF Mono", "Fira Code", monospace;
+  font-size: 0.875rem; font-weight: 600;
+  color: var(--accent); min-width: 2.5em; text-align: right;
+}
+
 /* Trips */
 .trips-card { margin-top: 8px; }
 .trip-list { max-height: 300px; overflow-y: auto; }
@@ -150,8 +173,7 @@ body {
 
 /* Responsive */
 @media (max-width: 480px) {
-  .cards-row { grid-template-columns: repeat(3, 1fr); gap: 6px; }
-  .env-cards { grid-template-columns: 1fr; }
+  .cards-row, .env-cards { grid-template-columns: repeat(3, 1fr); gap: 6px; }
   .card { padding: 10px; }
   .card-value { font-size: 1.5rem; }
   .card-label { font-size: 0.6rem; }
