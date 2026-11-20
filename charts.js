@@ -51,8 +51,7 @@ export class ChartManager {
       if (window.uPlot) return resolve();
       
       const script = document.createElement('script');
-      // uPlot uses uPlot.iife.min.js for IIFE (browser) builds
-      script.src = 'https://cdn.jsdelivr.net/npm/uplot@1.6.27/dist/uPlot.iife.min.js';
+      script.src = 'https://cdn.jsdelivr.net/npm/uplot@1.6.27/dist/uPlot.min.js';
       script.onload = () => {
         // Verify uPlot actually loaded
         if (typeof window.uPlot !== 'undefined') {
@@ -107,9 +106,9 @@ export class ChartManager {
       },
       series: [
         {}, // x axis (time)
-        { label: 'X', stroke: this.colors.x, width: 1.5 },
-        { label: 'Y', stroke: this.colors.y, width: 1.5 },
-        { label: 'Z', stroke: this.colors.z, width: 1.5 }
+        { label: 'X', stroke: this.colors.x, width: 1.5, paths: 'linear' },
+        { label: 'Y', stroke: this.colors.y, width: 1.5, paths: 'linear' },
+        { label: 'Z', stroke: this.colors.z, width: 1.5, paths: 'linear' }
       ],
       cursor: { show: true, focus: { prox: 16 } },
       legend: { show: false },
@@ -153,7 +152,7 @@ export class ChartManager {
         scales: { x: { time: true }, y: { auto: true, min: 0 } },
         series: [
           {},
-          { label: '震動幅度', stroke: this.colors.vibe, width: 1, fill: 'rgba(163,113,247,0.1)' }
+          { label: '震動幅度', stroke: this.colors.vibe, width: 1, fill: 'rgba(163,113,247,0.1)', paths: 'linear' }
         ],
         cursor: { show: true },
         legend: { show: false },
@@ -175,7 +174,7 @@ export class ChartManager {
         scales: { x: { time: true }, y: { auto: true, min: 0 } },
         series: [
           {},
-          { label: '速度', stroke: this.colors.speed, width: 2, fill: 'rgba(210,153,34,0.15)' }
+          { label: '速度', stroke: this.colors.speed, width: 2, fill: 'rgba(210,153,34,0.15)', paths: 'linear' }
         ],
         cursor: { show: true },
         legend: { show: false },
