@@ -150,8 +150,13 @@ body {
 
 /* Responsive */
 @media (max-width: 480px) {
-  .cards-row, .env-cards { grid-template-columns: 1fr; }
-  .card-value { font-size: 2rem; }
+  .cards-row { grid-template-columns: repeat(3, 1fr); gap: 6px; }
+  .env-cards { grid-template-columns: 1fr; }
+  .card { padding: 10px; }
+  .card-value { font-size: 1.5rem; }
+  .card-label { font-size: 0.6rem; }
+  .card-unit { font-size: 0.65rem; }
+  .card-sub { font-size: 0.6rem; }
   .controls { flex-direction: column; }
   .btn { width: 100%; }
 }
