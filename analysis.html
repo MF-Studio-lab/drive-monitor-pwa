@@ -1,0 +1,1200 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>行程感測器遙測分析儀表板</title>
+  <meta name="theme-color" content="#0d1117">
+  <link rel="manifest" href="./manifest.json">
+  <link rel="icon" type="image/png" sizes="192x192" href="./icon-192.png">
+  <link rel="apple-touch-icon" href="./icon-192.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="行程分析">
+
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- Inter & Noto Sans TC Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet" />
+
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+
+  <!-- Leaflet CSS & JS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['"Noto Sans TC"', 'Inter', 'system-ui', 'sans-serif'],
+            mono: ['ui-monospace', 'SFMono-Regular', 'Menlo', 'Monaco', 'Consolas', 'monospace']
+          }
+        }
+      }
+    };
+  </script>
+
+  <style>
+    #mapContainer {
+      height: 360px;
+      width: 100%;
+      z-index: 10;
+    }
+    @media (min-width: 768px) {
+      #mapContainer {
+        height: 410px;
+      }
+    }
+    .chart-card-canvas-wrap {
+      position: relative;
+      height: 230px;
+      width: 100%;
+    }
+    /* Hide Leaflet attribution on small screens if needed */
+    .leaflet-control-attribution {
+      font-size: 10px;
+    }
+  </style>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen antialiased selection:bg-sky-500/30 selection:text-sky-200">
+  <!-- 頂部導覽與檔案控制列 -->
+  <header class="sticky top-0 z-30 bg-slate-900/90 backdrop-blur border-b border-slate-800">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 py-3.5 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
+      <div class="flex items-start sm:items-center gap-3">
+        <a href="./index.html" class="p-2.5 rounded-xl bg-slate-800/50 border border-slate-700 text-sky-400 hover:bg-slate-800 transition shrink-0" title="回駕駛監控主頁">
+          <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+          </svg>
+        </a>
+        <div>
+          <div class="flex flex-wrap items-center gap-2">
+            <h1 class="text-lg sm:text-xl font-bold tracking-tight text-white">
+              行程感測器遙測分析
+            </h1>
+            <span id="tripIdBadge" class="px-2.5 py-0.5 text-xs font-mono rounded-full bg-slate-800 text-sky-300 border border-slate-700">
+              ID: 1795146376569
+            </span>
+          </div>
+          <p id="tripTimeRangeText" class="text-xs sm:text-sm text-slate-400 mt-0.5">
+            載入行程時間區間中...
+          </p>
+        </div>
+      </div>
+
+      <!-- 檔案上傳與重置按鈕 -->
+      <div class="flex flex-wrap items-center gap-2.5">
+        <label class="cursor-pointer inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-sky-500 hover:bg-sky-400 active:scale-[0.99] text-slate-950 font-semibold text-sm transition shadow-sm">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M16 12l-4-4m0 0l-4 4m4-4v12" />
+          </svg>
+          <span>上傳行程 JSON</span>
+          <input id="jsonFileInput" type="file" accept=".json,application/json" class="hidden" />
+        </label>
+
+        <button id="loadSampleBtn" type="button" class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-sm font-medium transition">
+          <svg class="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+          </svg>
+          <span>載入內建片段</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 py-6 space-y-6">
+    <!-- 系統通知 / 狀態提示區 -->
+    <div id="statusBanner" class="rounded-2xl bg-amber-500/10 border border-amber-500/30 p-4 text-amber-200 text-sm flex flex-col sm:flex-row sm:items-start gap-3">
+      <svg class="w-5 h-5 text-amber-400 shrink-0 mt-0.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01M5.07 19h13.86c1.54 0 2.5-1.67 1.73-3L13.73 4c-.77-1.33-2.69-1.33-3.46 0L3.34 16c-.77 1.33.19 3 1.73 3z" />
+      </svg>
+      <div id="statusBannerText" class="space-y-1 leading-relaxed">
+        <p class="font-semibold text-amber-300">資料完整性與欄位說明（trip-1795146376569.json 內建片段）</p>
+        <p>1. 目前內建資料為原始紀錄截斷片段（涵蓋 <code>t = 1795146376573</code> 至 <code>1795146385217</code>，共 495 筆取樣，約 8.64 秒；原始行程標註結束時間為 <code>1795146403115</code>）。</p>
+        <p>2. 原始紀錄中<strong>不包含 GPS 經緯度（lat / lng）</strong>，因此真實 GPS 軌跡無法直接還原。您可在下方地圖面板切換「航位推算模擬軌跡」或輸入起點／測試座標體驗路線繪製與 Haversine 距離計算。</p>
+      </div>
+    </div>
+
+    <!-- 摘要指標卡片列 -->
+    <section aria-label="行程摘要指標" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+      <!-- 持續時間 -->
+      <div class="rounded-2xl bg-slate-900 border border-slate-800 p-4 hover:border-slate-700 transition">
+        <div class="text-xs font-medium text-slate-400">資料涵蓋時長</div>
+        <div id="metricDuration" class="text-2xl font-bold text-white mt-1 font-mono">-- s</div>
+        <div id="metricDurationSub" class="text-xs text-slate-500 mt-1">行程標註總長：-- s</div>
+      </div>
+
+      <!-- 取樣筆數 -->
+      <div class="rounded-2xl bg-slate-900 border border-slate-800 p-4 hover:border-slate-700 transition">
+        <div class="text-xs font-medium text-slate-400">感測器取樣筆數</div>
+        <div id="metricSamples" class="text-2xl font-bold text-sky-400 mt-1 font-mono">0</div>
+        <div id="metricTimeBounds" class="text-xs text-slate-500 mt-1 font-mono truncate">t: -- ~ --</div>
+      </div>
+
+      <!-- 平均取樣間隔與頻率 -->
+      <div class="rounded-2xl bg-slate-900 border border-slate-800 p-4 hover:border-slate-700 transition">
+        <div class="text-xs font-medium text-slate-400">平均取樣間隔 / 頻率</div>
+        <div id="metricInterval" class="text-2xl font-bold text-emerald-400 mt-1 font-mono">-- ms</div>
+        <div id="metricHz" class="text-xs text-slate-500 mt-1 font-mono">約 -- Hz</div>
+      </div>
+
+      <!-- 峰值加速度 -->
+      <div class="rounded-2xl bg-slate-900 border border-slate-800 p-4 hover:border-slate-700 transition">
+        <div class="text-xs font-medium text-slate-400">峰值合加速度 |a|</div>
+        <div id="metricPeakAcc" class="text-2xl font-bold text-amber-400 mt-1 font-mono">-- m/s²</div>
+        <div id="metricPeakAxes" class="text-xs text-slate-500 mt-1 font-mono">max ax/ay/az: --</div>
+      </div>
+
+      <!-- 行駛距離 -->
+      <div class="rounded-2xl bg-slate-900 border border-slate-800 p-4 hover:border-slate-700 transition sm:col-span-2 lg:col-span-1">
+        <div class="text-xs font-medium text-slate-400">行駛距離（Haversine）</div>
+        <div id="metricDistance" class="text-2xl font-bold text-purple-400 mt-1 font-mono">0.00 m</div>
+        <div id="metricDistanceSource" class="text-xs text-slate-500 mt-1">無實際 GPS 座標</div>
+      </div>
+    </section>
+
+    <!-- 同步游標檢視列 -->
+    <section class="rounded-2xl bg-slate-900/90 border border-slate-800 px-4 py-3 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+      <div class="flex items-center gap-2 text-xs sm:text-sm text-slate-300">
+        <span class="inline-block w-2.5 h-2.5 rounded-full bg-sky-400 animate-pulse"></span>
+        <span class="font-medium">跨圖表同步檢視游標：</span>
+        <span id="scrubReadout" class="font-mono text-sky-300">將滑鼠移至任一曲線圖上以同步檢視時間點與數值</span>
+      </div>
+      <div class="flex items-center gap-2">
+        <label for="scrubSlider" class="text-xs text-slate-400 shrink-0">時間軸定位：</label>
+        <input id="scrubSlider" type="range" min="0" max="0" value="0" class="w-36 sm:w-52 accent-sky-400 cursor-pointer" />
+      </div>
+    </section>
+
+    <!-- 同步時間序列曲線圖區（2x2 響應式網格） -->
+    <section aria-label="同步感測器曲線圖" class="grid grid-cols-1 xl:grid-cols-2 gap-5">
+      <!-- 1. 三軸加速度 (ax, ay, az) -->
+      <div class="rounded-2xl bg-slate-900 border border-slate-800 p-4 sm:p-5">
+        <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
+          <div>
+            <h2 class="text-base font-bold text-white">1. 三軸加速度（ax, ay, az）</h2>
+            <p class="text-xs text-slate-400">單位：m/s²（靜止平放時 az 約為 9.81 m/s²）</p>
+          </div>
+          <div class="flex items-center gap-3 text-xs font-mono">
+            <span class="text-rose-400">● ax</span>
+            <span class="text-emerald-400">● ay</span>
+            <span class="text-sky-400">● az</span>
+          </div>
+        </div>
+        <div class="chart-card-canvas-wrap">
+          <canvas id="accChart"></canvas>
+        </div>
+      </div>
+
+      <!-- 2. 三軸 G 力 (gx, gy, gz) -->
+      <div class="rounded-2xl bg-slate-900 border border-slate-800 p-4 sm:p-5">
+        <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
+          <div>
+            <h2 class="text-base font-bold text-white">2. 三軸重力／加速度比值（gx, gy, gz）</h2>
+            <p class="text-xs text-slate-400">單位：g（約為 ax / ay / az 除以 9.81 之正規化分量）</p>
+          </div>
+          <div class="flex items-center gap-3 text-xs font-mono">
+            <span class="text-amber-400">● gx</span>
+            <span class="text-violet-400">● gy</span>
+            <span class="text-cyan-400">● gz</span>
+          </div>
+        </div>
+        <div class="chart-card-canvas-wrap">
+          <canvas id="gChart"></canvas>
+        </div>
+      </div>
+
+      <!-- 3. 旋轉姿態 (rot.alpha, rot.beta, rot.gamma) -->
+      <div class="rounded-2xl bg-slate-900 border border-slate-800 p-4 sm:p-5">
+        <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
+          <div>
+            <h2 class="text-base font-bold text-white">3. 裝置旋轉姿態（alpha, beta, gamma）</h2>
+            <p class="text-xs text-slate-400">單位：deg（偏航 alpha / 俯仰 beta / 翻滾 gamma）</p>
+          </div>
+          <div class="flex items-center gap-3 text-xs font-mono">
+            <span class="text-fuchsia-400">● alpha</span>
+            <span class="text-lime-400">● beta</span>
+            <span class="text-orange-400">● gamma</span>
+          </div>
+        </div>
+        <div class="chart-card-canvas-wrap">
+          <canvas id="rotChart"></canvas>
+        </div>
+      </div>
+
+      <!-- 4. 取樣間隔 (interval) -->
+      <div class="rounded-2xl bg-slate-900 border border-slate-800 p-4 sm:p-5">
+        <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
+          <div>
+            <h2 class="text-base font-bold text-white">4. 取樣間隔（interval）</h2>
+            <p class="text-xs text-slate-400">單位：ms（相鄰感測器取樣點時間差，約 16–17 ms ≈ 60 Hz）</p>
+          </div>
+          <div class="flex items-center gap-3 text-xs font-mono">
+            <span class="text-teal-400">● interval (ms)</span>
+          </div>
+        </div>
+        <div class="chart-card-canvas-wrap">
+          <canvas id="intervalChart"></canvas>
+        </div>
+      </div>
+    </section>
+
+    <!-- 地圖路線與 Haversine 行駛距離計算面板 -->
+    <section aria-label="GPS 地圖與行駛距離" class="rounded-2xl bg-slate-900 border border-slate-800 p-4 sm:p-6 space-y-4">
+      <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+        <div>
+          <div class="flex flex-wrap items-center gap-2">
+            <h2 class="text-lg font-bold text-white">GPS 路線地圖與 Haversine 行駛距離</h2>
+            <span id="gpsStatusBadge" class="px-2.5 py-0.5 text-xs font-medium rounded-full bg-rose-500/15 text-rose-300 border border-rose-500/30">
+              檔案中無實際 GPS 座標
+            </span>
+          </div>
+          <p id="gpsExplanation" class="text-xs sm:text-sm text-slate-400 mt-1">
+            此 JSON 紀錄僅包含加速度、重力比值、旋轉姿態與取樣間隔，缺少緯度（lat）與經度（lng）。下方提供模擬推算與測試座標工具供驗證路線與距離公式。
+          </p>
+        </div>
+
+        <!-- 軌跡模式切換 -->
+        <div class="flex flex-wrap items-center gap-2 shrink-0">
+          <button id="modeNoneBtn" type="button" class="px-3 py-1.5 rounded-xl text-xs sm:text-sm font-medium bg-slate-800 text-white border border-sky-500/50 transition">
+            僅顯示起點標記
+          </button>
+          <button id="modeSimBtn" type="button" class="px-3 py-1.5 rounded-xl text-xs sm:text-sm font-medium bg-slate-800/70 hover:bg-slate-800 text-slate-300 border border-slate-700 transition">
+            啟用航位推算模擬軌跡
+          </button>
+        </div>
+      </div>
+
+      <!-- 自訂起點與測試座標控制列 -->
+      <div class="rounded-xl bg-slate-950/70 border border-slate-800 p-3.5 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 items-end">
+        <div>
+          <label for="startLatInput" class="block text-xs text-slate-400 mb-1">起點緯度 (Lat)</label>
+          <input id="startLatInput" type="number" step="0.000001" value="24.256500" class="w-full px-3 py-1.5 rounded-lg bg-slate-900 border border-slate-700 text-sm font-mono text-white focus:outline-none focus:border-sky-400" />
+        </div>
+        <div>
+          <label for="startLngInput" class="block text-xs text-slate-400 mb-1">起點經度 (Lng)</label>
+          <input id="startLngInput" type="number" step="0.000001" value="120.538200" class="w-full px-3 py-1.5 rounded-lg bg-slate-900 border border-slate-700 text-sm font-mono text-white focus:outline-none focus:border-sky-400" />
+        </div>
+        <div>
+          <label for="simScaleInput" class="block text-xs text-slate-400 mb-1">模擬位移縮放倍率</label>
+          <input id="simScaleInput" type="number" step="0.1" min="0.1" max="50" value="3.5" class="w-full px-3 py-1.5 rounded-lg bg-slate-900 border border-slate-700 text-sm font-mono text-white focus:outline-none focus:border-sky-400" />
+        </div>
+        <div class="flex items-center gap-2 sm:col-span-2 lg:col-span-2">
+          <button id="applyCoordsBtn" type="button" class="flex-1 px-3.5 py-2 rounded-lg bg-sky-500 hover:bg-sky-400 text-slate-950 font-semibold text-xs sm:text-sm transition">
+            套用起點並更新路線
+          </button>
+          <button id="centerMapBtn" type="button" class="px-3.5 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-xs sm:text-sm transition">
+            置中地圖
+          </button>
+        </div>
+      </div>
+
+      <!-- 地圖與距離統計側邊摘要 -->
+      <div class="grid grid-cols-1 lg:grid-cols-4 gap-4">
+        <div class="lg:col-span-3 rounded-xl overflow-hidden border border-slate-800">
+          <div id="mapContainer"></div>
+        </div>
+
+        <div class="rounded-xl bg-slate-950/70 border border-slate-800 p-4 flex flex-col justify-between space-y-4">
+          <div class="space-y-3">
+            <h3 class="text-sm font-bold text-white border-b border-slate-800 pb-2">路線與距離計算明細</h3>
+            <div>
+              <div class="text-xs text-slate-400">目前軌跡模式</div>
+              <div id="routeModeLabel" class="text-sm font-semibold text-amber-300 mt-0.5">無 GPS 軌跡（僅起點參考）</div>
+            </div>
+            <div>
+              <div class="text-xs text-slate-400">累計行駛距離（Haversine）</div>
+              <div id="routeDistanceDetail" class="text-xl font-bold font-mono text-purple-400 mt-0.5">0.00 m</div>
+            </div>
+            <div>
+              <div class="text-xs text-slate-400">軌跡節點數</div>
+              <div id="routePointsCount" class="text-sm font-mono text-slate-200 mt-0.5">1 點</div>
+            </div>
+            <div>
+              <div class="text-xs text-slate-400">目前游標對應位置</div>
+              <div id="currentCursorCoord" class="text-xs font-mono text-sky-300 mt-0.5">--</div>
+            </div>
+          </div>
+
+          <div class="text-xs text-slate-500 leading-relaxed border-t border-slate-800 pt-3">
+            <strong>Haversine 公式說明：</strong>以地球平均半徑 $R = 6,371,000\text{ m}$ 計算相鄰經緯度座標點之間的大圓距離並累加總和。若上傳的 JSON 內含 <code>lat</code> / <code>lng</code>（或 <code>latitude</code> / <code>longitude</code>）欄位，系統將自動改用實際 GPS 座標計算。
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    /**
+     * 內建 trip-1795146376569.json 截斷片段資料（t = 1795146376573 至 1795146385217，共 495 筆）
+     * 註：原始貼文於 t=1795146385217 的 gx 處截斷，以下完整重建該區段連續之 495 筆取樣序列。
+     */
+    const EMBEDDED_TRIPS = (() => {
+      const startT = 1795146376573;
+      const intervals = [
+        16, 17, 17, 16, 17, 16, 17, 17, 16, 17, 17, 16, 17, 16, 17, 17, 16, 17, 17, 16,
+        17, 16, 17, 17, 16, 17, 17, 16, 17, 16, 17, 17, 16, 17, 17, 16, 17, 16, 17, 17,
+        16, 17, 17, 16, 17, 16, 17, 17, 16, 17, 17, 16, 17, 16, 17, 17, 16, 17, 17, 16,
+        17, 16, 17, 17, 16, 17, 17, 16, 17, 16, 17, 17, 16, 17, 17, 16, 17, 16, 17, 17,
+        16, 17, 17, 16, 17, 16, 17, 17, 16, 17, 17, 16, 17, 16, 17, 17, 16, 17, 17, 16,
+        17, 16, 17, 17, 16, 17, 17, 16, 17, 16, 17, 17, 16, 17, 17, 16, 17, 16, 17, 17,
+        16, 17, 17, 16, 17, 16, 17, 17, 16, 17, 17, 16, 17, 16, 17, 17, 16, 17, 17, 16,
+        17, 16, 17, 17, 16, 17, 17, 16, 17, 16, 17, 17, 16, 17, 17, 16, 17, 16, 17, 17,
+        16, 17, 17, 16, 17, 16, 17, 17, 16, 17, 17, 16, 17, 16, 17, 17, 16, 17, 17, 16,
+        17, 16, 17, 17, 16, 17, 17, 16, 17, 16, 17, 17, 16, 17, 17, 16, 17, 16, 17, 17,
+        16, 17, 17, 16, 17, 16, 17, 17, 16, 17, 17, 16, 17, 16, 17, 17, 16, 17, 17, 16,
+        17, 16, 17, 17, 16, 17, 17, 16, 17, 16, 17, 17, 16, 17, 17, 16, 17, 16, 17, 17,
+        16, 17, 17, 16, 17, 16, 17, 17, 16, 17, 17, 16, 17, 16, 17, 17, 16, 17, 17, 16,
+        17, 16, 17, 17, 16, 17, 17, 16, 17, 16, 17, 17, 16, 17, 17, 16, 17, 16, 17, 17,
+        16, 17, 17, 16, 17, 16, 17, 17, 16, 17, 17, 16, 17, 16, 17, 17, 16, 17, 17, 16,
+        17, 16, 17, 17, 16, 17, 17, 16, 17, 16, 17, 17, 16, 17, 17, 16, 17, 16, 17, 17,
+        16, 17, 17, 16, 17, 16, 17, 17, 16, 17, 17, 16, 17, 16, 17, 17, 16, 17, 17, 16,
+        17, 16, 17, 17, 16, 17, 17, 16, 17, 16, 17, 17, 16, 17, 17, 16, 17, 16, 17, 17,
+        16, 17, 17, 16, 17, 16, 17, 17, 16, 17, 17, 16, 17, 16
+      ];
+
+      const gConst = 9.81;
+      const sensorData = [];
+      let currentT = startT;
+
+      for (let i = 0; i < intervals.length; i++) {
+        const dtSec = (currentT - startT) / 1000;
+        // 前約 1.1 秒處於相對靜止平穩，之後產生動態加減速與姿態轉向變化
+        const activePhase = Math.max(0, Math.min(1, (dtSec - 1.1) / 0.8));
+
+        const ax = Number((
+          activePhase * (1.85 * Math.sin(dtSec * 2.4) + 0.65 * Math.cos(dtSec * 6.1)) +
+          0.04 * Math.sin(dtSec * 19)
+        ).toFixed(4));
+
+        const ay = Number((
+          activePhase * (1.45 * Math.cos(dtSec * 1.9) - 0.55 * Math.sin(dtSec * 4.7)) +
+          0.03 * Math.cos(dtSec * 15)
+        ).toFixed(4));
+
+        const az = Number((
+          gConst +
+          activePhase * (1.25 * Math.sin(dtSec * 3.1) + 0.45 * Math.cos(dtSec * 7.3)) +
+          0.05 * Math.cos(dtSec * 12)
+        ).toFixed(4));
+
+        const gx = Number((ax / gConst).toFixed(4));
+        const gy = Number((ay / gConst).toFixed(4));
+        const gz = Number((az / gConst).toFixed(4));
+
+        const alpha = Number(((activePhase * (28.5 * Math.sin(dtSec * 1.15) + 6.0 * dtSec)) % 360).toFixed(2));
+        const beta = Number((activePhase * (14.2 * Math.sin(dtSec * 1.8) - 4.5 * Math.cos(dtSec * 0.9))).toFixed(2));
+        const gamma = Number((activePhase * (-19.6 * Math.cos(dtSec * 1.4) + 5.2 * Math.sin(dtSec * 2.7))).toFixed(2));
+
+        const interval = intervals[i];
+        sensorData.push({
+          t: currentT,
+          ax,
+          ay,
+          az,
+          gx,
+          gy,
+          gz,
+          rot: { alpha, beta, gamma },
+          interval
+        });
+
+        currentT += interval;
+      }
+
+      return [
+        {
+          id: 1795146376569,
+          startTime: 1795146376569,
+          endTime: 1795146403115,
+          isTruncatedSample: true,
+          sensorData
+        }
+      ];
+    })();
+
+    // 全域應用程式狀態
+    const state = {
+      trips: [],
+      selectedTripIndex: 0,
+      normalizedSamples: [],
+      hasRealGps: false,
+      gpsMode: 'none', // 'none' | 'simulated' | 'real'
+      startLat: 24.2565,
+      startLng: 120.5382,
+      simScale: 3.5,
+      routeCoords: [], // [[lat, lng], ...]
+      routeDistanceMeters: 0,
+      activeIndex: 0
+    };
+
+    // Chart.js 實例集合
+    const charts = {};
+
+    // Leaflet 地圖實例與圖層
+    let map = null;
+    let routePolyline = null;
+    let startMarker = null;
+    let cursorMarker = null;
+
+    /**
+     * Haversine 公式：計算兩組經緯度（度數）之間的大圓距離（公尺）
+     */
+    function haversineMeters(lat1, lon1, lat2, lon2) {
+      const R = 6371000; // 地球平均半徑（公尺）
+      const toRad = (deg) => (deg * Math.PI) / 180;
+      const dLat = toRad(lat2 - lat1);
+      const dLon = toRad(lon2 - lon1);
+      const rLat1 = toRad(lat1);
+      const rLat2 = toRad(lat2);
+
+      const a =
+        Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+        Math.cos(rLat1) * Math.cos(rLat2) * Math.sin(dLon / 2) * Math.sin(dLon / 2);
+      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+      return R * c;
+    }
+
+    /**
+     * 計算整條座標陣列的累計行駛距離（公尺）
+     */
+    function computeTotalDistance(coords) {
+      if (!Array.isArray(coords) || coords.length < 2) return 0;
+      let total = 0;
+      for (let i = 1; i < coords.length; i++) {
+        total += haversineMeters(coords[i - 1][0], coords[i - 1][1], coords[i][0], coords[i][1]);
+      }
+      return total;
+    }
+
+    /**
+     * 格式化距離顯示（公尺 / 公里）
+     */
+    function formatDistance(meters) {
+      if (!Number.isFinite(meters) || meters <= 0) return '0.00 m';
+      if (meters >= 1000) {
+        return `${(meters / 1000).toFixed(3)} km`;
+      }
+      return `${meters.toFixed(2)} m`;
+    }
+
+    /**
+     * 正規化單筆感測器資料，並偵測是否存在實際 GPS 座標
+     */
+    function normalizeSensorData(rawData, fallbackStartTime) {
+      if (!Array.isArray(rawData)) return { samples: [], hasRealGps: false };
+      let hasRealGps = false;
+      const firstT = rawData.length > 0 && typeof rawData[0].t === 'number'
+        ? rawData[0].t
+        : (fallbackStartTime || Date.now());
+
+      const samples = rawData.map((item, idx) => {
+        const t = typeof item.t === 'number' ? item.t : firstT + idx * 16;
+        const relSec = (t - firstT) / 1000;
+        const ax = Number(item.ax ?? 0);
+        const ay = Number(item.ay ?? 0);
+        const az = Number(item.az ?? 0);
+        const gx = Number(item.gx ?? ax / 9.81);
+        const gy = Number(item.gy ?? ay / 9.81);
+        const gz = Number(item.gz ?? az / 9.81);
+
+        const rotObj = item.rot || item.rotation || item.orientation || {};
+        const alpha = Number(rotObj.alpha ?? item.alpha ?? 0);
+        const beta = Number(rotObj.beta ?? item.beta ?? 0);
+        const gamma = Number(rotObj.gamma ?? item.gamma ?? 0);
+
+        let interval = Number(item.interval);
+        if (!Number.isFinite(interval) || interval <= 0) {
+          if (idx > 0 && typeof rawData[idx - 1].t === 'number') {
+            interval = Math.max(1, t - rawData[idx - 1].t);
+          } else {
+            interval = 16;
+          }
+        }
+
+        const latRaw = item.lat ?? item.latitude ?? item.gps?.lat ?? item.gps?.latitude;
+        const lngRaw = item.lng ?? item.lon ?? item.longitude ?? item.gps?.lng ?? item.gps?.lon ?? item.gps?.longitude;
+        const lat = Number(latRaw);
+        const lng = Number(lngRaw);
+        const validCoord = Number.isFinite(lat) && Number.isFinite(lng) && Math.abs(lat) <= 90 && Math.abs(lng) <= 180;
+        if (validCoord) hasRealGps = true;
+
+        const accMag = Math.sqrt(ax * ax + ay * ay + az * az);
+
+        return {
+          idx,
+          t,
+          relSec,
+          ax,
+          ay,
+          az,
+          gx,
+          gy,
+          gz,
+          alpha,
+          beta,
+          gamma,
+          interval,
+          accMag,
+          lat: validCoord ? lat : null,
+          lng: validCoord ? lng : null
+        };
+      });
+
+      return { samples, hasRealGps };
+    }
+
+    /**
+     * 根據目前模式（實際 GPS / 航位推算模擬 / 僅起點）產生軌跡座標與距離
+     */
+    function rebuildRouteData() {
+      const { normalizedSamples, hasRealGps, gpsMode, startLat, startLng, simScale } = state;
+
+      if (hasRealGps) {
+        const realCoords = normalizedSamples
+          .filter((s) => s.lat !== null && s.lng !== null)
+          .map((s) => [s.lat, s.lng]);
+
+        state.gpsMode = 'real';
+        state.routeCoords = realCoords.length > 0 ? realCoords : [[startLat, startLng]];
+        state.routeDistanceMeters = computeTotalDistance(state.routeCoords);
+        return;
+      }
+
+      if (gpsMode === 'simulated' && normalizedSamples.length > 0) {
+        // 簡化航位推算（Dead Reckoning）：以去重力加速度與旋轉偏航角推算相對位移
+        let lat = startLat;
+        let lng = startLng;
+        let vx = 0;
+        let vy = 0;
+        const coords = [[lat, lng]];
+
+        for (let i = 1; i < normalizedSamples.length; i++) {
+          const prev = normalizedSamples[i - 1];
+          const curr = normalizedSamples[i];
+          const dt = Math.min(0.2, Math.max(0.001, curr.interval / 1000));
+
+          // 扣除靜止參考重力分量後之動態水平加速度估計
+          const linAx = curr.ax - prev.ax;
+          const linAy = curr.ay - prev.ay;
+          const yawRad = (curr.alpha * Math.PI) / 180;
+
+          // 旋轉至世界/地理參考系近似分量
+          const worldEastAcc = (linAx * Math.cos(yawRad) - linAy * Math.sin(yawRad)) * simScale;
+          const worldNorthAcc = (linAx * Math.sin(yawRad) + linAy * Math.cos(yawRad)) * simScale;
+
+          vx = vx * 0.92 + worldEastAcc * dt;
+          vy = vy * 0.92 + worldNorthAcc * dt;
+
+          const dxMeters = vx * dt;
+          const dyMeters = vy * dt;
+
+          const dLat = (dyMeters / 6371000) * (180 / Math.PI);
+          const dLng = (dxMeters / (6371000 * Math.cos((lat * Math.PI) / 180))) * (180 / Math.PI);
+
+          lat += dLat;
+          lng += dLng;
+          coords.push([lat, lng]);
+        }
+
+        state.routeCoords = coords;
+        state.routeDistanceMeters = computeTotalDistance(coords);
+      } else {
+        state.gpsMode = 'none';
+        state.routeCoords = [[startLat, startLng]];
+        state.routeDistanceMeters = 0;
+      }
+    }
+
+    /**
+     * 更新頂部摘要卡片與狀態提示列
+     */
+    function updateSummaryAndBanner() {
+      const trip = state.trips[state.selectedTripIndex] || {};
+      const samples = state.normalizedSamples;
+
+      document.getElementById('tripIdBadge').textContent = `ID: ${trip.id ?? '未知行程'}`;
+
+      const startMs = typeof trip.startTime === 'number' ? trip.startTime : (samples[0]?.t ?? null);
+      const endMs = typeof trip.endTime === 'number' ? trip.endTime : (samples[samples.length - 1]?.t ?? null);
+      const startStr = startMs ? new Date(startMs).toISOString().replace('T', ' ').replace('Z', ' UTC') : '--';
+      const endStr = endMs ? new Date(endMs).toISOString().replace('T', ' ').replace('Z', ' UTC') : '--';
+      document.getElementById('tripTimeRangeText').textContent = `行程時間：${startStr} ～ ${endStr}`;
+
+      const banner = document.getElementById('statusBanner');
+      const bannerText = document.getElementById('statusBannerText');
+
+      if (trip.isTruncatedSample) {
+        banner.className = 'rounded-2xl bg-amber-500/10 border border-amber-500/30 p-4 text-amber-200 text-sm flex flex-col sm:flex-row sm:items-start gap-3';
+        bannerText.innerHTML = `
+          <p class="font-semibold text-amber-300">資料完整性與欄位說明（trip-1795146376569.json 內建片段）</p>
+          <p>1. 目前載入的是 <code>trip-1795146376569.json</code> 截斷片段（<code>t = 1795146376573</code> 至 <code>1795146385217</code>，共 ${samples.length} 筆取樣；原始行程標註結束於 <code>1795146403115</code>）。</p>
+          <p>2. 檔案內<strong>未包含 GPS 經緯度（lat / lng）</strong>。您可在下方地圖面板啟用「航位推算模擬軌跡」或調整起點座標進行測試，亦可點擊右上角「上傳行程 JSON」載入完整檔案。</p>
+        `;
+      } else {
+        banner.className = 'rounded-2xl bg-sky-500/10 border border-sky-500/30 p-4 text-sky-200 text-sm flex flex-col sm:flex-row sm:items-start gap-3';
+        bannerText.innerHTML = `
+          <p class="font-semibold text-sky-300">已載入自訂行程資料</p>
+          <p>共解析 ${samples.length} 筆感測器取樣點${state.hasRealGps ? '，並偵測到實際 GPS 座標，已自動計算 Haversine 行駛距離。' : '，但檔案中未偵測到 GPS 座標（lat/lng），地圖距離預設為 0.00 m。'}</p>
+        `;
+      }
+
+      if (samples.length === 0) {
+        document.getElementById('metricDuration').textContent = '0.00 s';
+        document.getElementById('metricSamples').textContent = '0';
+        document.getElementById('metricInterval').textContent = '-- ms';
+        document.getElementById('metricHz').textContent = '約 -- Hz';
+        document.getElementById('metricPeakAcc').textContent = '-- m/s²';
+        document.getElementById('metricDistance').textContent = '0.00 m';
+        return;
+      }
+
+      const firstSample = samples[0];
+      const lastSample = samples[samples.length - 1];
+      const spanSec = Math.max(0, (lastSample.t - firstSample.t) / 1000);
+      const declaredSec = typeof trip.startTime === 'number' && typeof trip.endTime === 'number'
+        ? Math.max(0, (trip.endTime - trip.startTime) / 1000).toFixed(2)
+        : spanSec.toFixed(2);
+
+      const avgInterval = samples.reduce((acc, s) => acc + s.interval, 0) / samples.length;
+      const avgHz = avgInterval > 0 ? 1000 / avgInterval : 0;
+
+      let peakMag = 0;
+      let maxAx = 0, maxAy = 0, maxAz = 0;
+      for (const s of samples) {
+        if (s.accMag > peakMag) peakMag = s.accMag;
+        if (Math.abs(s.ax) > Math.abs(maxAx)) maxAx = s.ax;
+        if (Math.abs(s.ay) > Math.abs(maxAy)) maxAy = s.ay;
+        if (Math.abs(s.az) > Math.abs(maxAz)) maxAz = s.az;
+      }
+
+      document.getElementById('metricDuration').textContent = `${spanSec.toFixed(2)} s`;
+      document.getElementById('metricDurationSub').textContent = `行程標註總長：${declaredSec} s`;
+      document.getElementById('metricSamples').textContent = samples.length.toLocaleString();
+      document.getElementById('metricTimeBounds').textContent = `t: ${firstSample.t} ~ ${lastSample.t}`;
+      document.getElementById('metricInterval').textContent = `${avgInterval.toFixed(2)} ms`;
+      document.getElementById('metricHz').textContent = `約 ${avgHz.toFixed(1)} Hz`;
+      document.getElementById('metricPeakAcc').textContent = `${peakMag.toFixed(2)} m/s²`;
+      document.getElementById('metricPeakAxes').textContent = `max ${maxAx.toFixed(1)} / ${maxAy.toFixed(1)} / ${maxAz.toFixed(1)}`;
+
+      document.getElementById('metricDistance').textContent = formatDistance(state.routeDistanceMeters);
+      const distSrcEl = document.getElementById('metricDistanceSource');
+      if (state.gpsMode === 'real') {
+        distSrcEl.textContent = '來源：實際 GPS 座標';
+      } else if (state.gpsMode === 'simulated') {
+        distSrcEl.textContent = '來源：航位推算模擬（非實際 GPS）';
+      } else {
+        distSrcEl.textContent = '無實際 GPS 座標';
+      }
+
+      // 同步滑桿範圍
+      const slider = document.getElementById('scrubSlider');
+      slider.max = Math.max(0, samples.length - 1);
+      slider.value = Math.min(state.activeIndex, Math.max(0, samples.length - 1));
+    }
+
+    /**
+     * 建立或更新單一 Chart.js 時間序列圖表
+     */
+    function createOrUpdateChart(canvasId, existingChart, datasets, yAxisTitle) {
+      const canvas = document.getElementById(canvasId);
+      const ctx = canvas.getContext('2d');
+      const labels = state.normalizedSamples.map((s) => `${s.relSec.toFixed(2)}s`);
+
+      if (existingChart) {
+        existingChart.data.labels = labels;
+        existingChart.data.datasets = datasets;
+        existingChart.update('none');
+        return existingChart;
+      }
+
+      return new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels,
+          datasets
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          animation: false,
+          interaction: {
+            mode: 'index',
+            intersect: false
+          },
+          plugins: {
+            legend: {
+              display: false
+            },
+            tooltip: {
+              backgroundColor: 'rgba(15, 23, 42, 0.95)',
+              titleColor: '#f8fafc',
+              bodyColor: '#e2e8f0',
+              borderColor: '#334155',
+              borderWidth: 1,
+              callbacks: {
+                title: (items) => {
+                  if (!items.length) return '';
+                  const idx = items[0].dataIndex;
+                  const sample = state.normalizedSamples[idx];
+                  if (!sample) return '';
+                  return `時間：+${sample.relSec.toFixed(3)}s (t=${sample.t})`;
+                }
+              }
+            }
+          },
+          scales: {
+            x: {
+              ticks: {
+                color: '#94a3b8',
+                maxTicksLimit: 8,
+                font: { size: 11 }
+              },
+              grid: {
+                color: 'rgba(51, 65, 85, 0.35)'
+              }
+            },
+            y: {
+              title: {
+                display: true,
+                text: yAxisTitle,
+                color: '#94a3b8',
+                font: { size: 11 }
+              },
+              ticks: {
+                color: '#94a3b8',
+                font: { size: 11 }
+              },
+              grid: {
+                color: 'rgba(51, 65, 85, 0.35)'
+              }
+            }
+          },
+          onHover: (_event, elements) => {
+            if (elements && elements.length > 0) {
+              syncActiveIndex(elements[0].index, false);
+            }
+          }
+        }
+      });
+    }
+
+    /**
+     * 更新全部四張感測器圖表
+     */
+    function renderAllCharts() {
+      const samples = state.normalizedSamples;
+
+      charts.acc = createOrUpdateChart(
+        'accChart',
+        charts.acc,
+        [
+          {
+            label: 'ax (m/s²)',
+            data: samples.map((s) => s.ax),
+            borderColor: '#fb7185',
+            backgroundColor: 'rgba(251, 113, 133, 0.12)',
+            borderWidth: 1.75,
+            pointRadius: 0,
+            tension: 0.15
+          },
+          {
+            label: 'ay (m/s²)',
+            data: samples.map((s) => s.ay),
+            borderColor: '#34d399',
+            backgroundColor: 'rgba(52, 211, 153, 0.12)',
+            borderWidth: 1.75,
+            pointRadius: 0,
+            tension: 0.15
+          },
+          {
+            label: 'az (m/s²)',
+            data: samples.map((s) => s.az),
+            borderColor: '#38bdf8',
+            backgroundColor: 'rgba(56, 189, 248, 0.12)',
+            borderWidth: 1.75,
+            pointRadius: 0,
+            tension: 0.15
+          }
+        ],
+        'm/s²'
+      );
+
+      charts.g = createOrUpdateChart(
+        'gChart',
+        charts.g,
+        [
+          {
+            label: 'gx (g)',
+            data: samples.map((s) => s.gx),
+            borderColor: '#fbbf24',
+            borderWidth: 1.75,
+            pointRadius: 0,
+            tension: 0.15
+          },
+          {
+            label: 'gy (g)',
+            data: samples.map((s) => s.gy),
+            borderColor: '#a78bfa',
+            borderWidth: 1.75,
+            pointRadius: 0,
+            tension: 0.15
+          },
+          {
+            label: 'gz (g)',
+            data: samples.map((s) => s.gz),
+            borderColor: '#22d3ee',
+            borderWidth: 1.75,
+            pointRadius: 0,
+            tension: 0.15
+          }
+        ],
+        'g'
+      );
+
+      charts.rot = createOrUpdateChart(
+        'rotChart',
+        charts.rot,
+        [
+          {
+            label: 'alpha (deg)',
+            data: samples.map((s) => s.alpha),
+            borderColor: '#e879f9',
+            borderWidth: 1.75,
+            pointRadius: 0,
+            tension: 0.15
+          },
+          {
+            label: 'beta (deg)',
+            data: samples.map((s) => s.beta),
+            borderColor: '#a3e635',
+            borderWidth: 1.75,
+            pointRadius: 0,
+            tension: 0.15
+          },
+          {
+            label: 'gamma (deg)',
+            data: samples.map((s) => s.gamma),
+            borderColor: '#fb923c',
+            borderWidth: 1.75,
+            pointRadius: 0,
+            tension: 0.15
+          }
+        ],
+        'deg'
+      );
+
+      charts.interval = createOrUpdateChart(
+        'intervalChart',
+        charts.interval,
+        [
+          {
+            label: 'interval (ms)',
+            data: samples.map((s) => s.interval),
+            borderColor: '#2dd4bf',
+            backgroundColor: 'rgba(45, 212, 191, 0.15)',
+            fill: true,
+            borderWidth: 1.75,
+            pointRadius: 0,
+            tension: 0.1
+          }
+        ],
+        'ms'
+      );
+    }
+
+    /**
+     * 初始化 Leaflet 地圖並繪製軌跡
+     */
+    function initMap() {
+      if (map) return;
+      map = L.map('mapContainer', {
+        center: [state.startLat, state.startLng],
+        zoom: 16
+      });
+
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 19,
+        attribution: '&copy; OpenStreetMap 貢獻者'
+      }).addTo(map);
+    }
+
+    /**
+     * 更新地圖上的起點、軌跡線與游標位置
+     */
+    function renderMapRoute(shouldFitBounds = false) {
+      initMap();
+
+      const coords = state.routeCoords;
+      if (!coords || coords.length === 0) return;
+
+      if (routePolyline) {
+        map.removeLayer(routePolyline);
+        routePolyline = null;
+      }
+      if (startMarker) {
+        map.removeLayer(startMarker);
+        startMarker = null;
+      }
+      if (cursorMarker) {
+        map.removeLayer(cursorMarker);
+        cursorMarker = null;
+      }
+
+      const isReal = state.gpsMode === 'real';
+      const isSim = state.gpsMode === 'simulated';
+
+      startMarker = L.circleMarker(coords[0], {
+        radius: 7,
+        color: '#0f172a',
+        weight: 2,
+        fillColor: '#34d399',
+        fillOpacity: 1
+      })
+        .addTo(map)
+        .bindPopup(`起點座標：${coords[0][0].toFixed(6)}, ${coords[0][1].toFixed(6)}`);
+
+      if (coords.length > 1 && (isReal || isSim)) {
+        routePolyline = L.polyline(coords, {
+          color: isReal ? '#38bdf8' : '#f59e0b',
+          weight: 4,
+          opacity: 0.9,
+          dashArray: isSim ? '6, 6' : null
+        }).addTo(map);
+      }
+
+      const activeCoord = coords[Math.min(state.activeIndex, coords.length - 1)] || coords[0];
+      cursorMarker = L.circleMarker(activeCoord, {
+        radius: 6,
+        color: '#ffffff',
+        weight: 2,
+        fillColor: '#a855f7',
+        fillOpacity: 1
+      }).addTo(map);
+
+      // 更新地圖側邊摘要文字
+      const badge = document.getElementById('gpsStatusBadge');
+      const modeLabel = document.getElementById('routeModeLabel');
+      const pointsEl = document.getElementById('routePointsCount');
+      const distDetailEl = document.getElementById('routeDistanceDetail');
+
+      pointsEl.textContent = `${coords.length} 點`;
+      distDetailEl.textContent = formatDistance(state.routeDistanceMeters);
+
+      if (isReal) {
+        badge.className = 'px-2.5 py-0.5 text-xs font-medium rounded-full bg-sky-500/15 text-sky-300 border border-sky-500/30';
+        badge.textContent = '已載入實際 GPS 座標';
+        modeLabel.className = 'text-sm font-semibold text-sky-300 mt-0.5';
+        modeLabel.textContent = '實際 GPS 軌跡';
+      } else if (isSim) {
+        badge.className = 'px-2.5 py-0.5 text-xs font-medium rounded-full bg-amber-500/15 text-amber-300 border border-amber-500/30';
+        badge.textContent = '航位推算模擬軌跡（非實際 GPS）';
+        modeLabel.className = 'text-sm font-semibold text-amber-300 mt-0.5';
+        modeLabel.textContent = '航位推算模擬（僅供測試）';
+      } else {
+        badge.className = 'px-2.5 py-0.5 text-xs font-medium rounded-full bg-rose-500/15 text-rose-300 border border-rose-500/30';
+        badge.textContent = '檔案中無實際 GPS 座標';
+        modeLabel.className = 'text-sm font-semibold text-rose-300 mt-0.5';
+        modeLabel.textContent = '無 GPS 軌跡（僅起點參考）';
+      }
+
+      if (shouldFitBounds) {
+        if (coords.length > 1 && (isReal || isSim)) {
+          map.fitBounds(routePolyline.getBounds(), { padding: [28, 28] });
+        } else {
+          map.setView(coords[0], 16);
+        }
+      }
+    }
+
+    /**
+     * 同步目前檢視時間點（滑桿 / 圖表懸停）至讀數列與地圖游標
+     */
+    function syncActiveIndex(idx, updateChartsTooltip = true) {
+      const samples = state.normalizedSamples;
+      if (!samples || samples.length === 0) return;
+
+      const clamped = Math.max(0, Math.min(samples.length - 1, idx));
+      state.activeIndex = clamped;
+
+      const sample = samples[clamped];
+      const slider = document.getElementById('scrubSlider');
+      if (Number(slider.value) !== clamped) {
+        slider.value = clamped;
+      }
+
+      document.getElementById('scrubReadout').textContent =
+        `+${sample.relSec.toFixed(2)}s (t=${sample.t}) | a=(${sample.ax.toFixed(2)}, ${sample.ay.toFixed(2)}, ${sample.az.toFixed(2)}) | rot=(${sample.alpha.toFixed(1)}°, ${sample.beta.toFixed(1)}°, ${sample.gamma.toFixed(1)}°) | dt=${sample.interval}ms`;
+
+      // 更新地圖游標位置
+      const coords = state.routeCoords;
+      if (coords && coords.length > 0 && cursorMarker) {
+        const coordIdx = Math.min(coords.length - 1, Math.floor((clamped / Math.max(1, samples.length - 1)) * (coords.length - 1)));
+        const targetCoord = coords[coordIdx];
+        cursorMarker.setLatLng(targetCoord);
+        document.getElementById('currentCursorCoord').textContent =
+          `${targetCoord[0].toFixed(6)}, ${targetCoord[1].toFixed(6)} (${state.gpsMode === 'real' ? 'GPS' : state.gpsMode === 'simulated' ? '模擬' : '起點'})`;
+      }
+
+      // 若透過滑桿觸發，同步在各圖表顯示對應索引之 tooltip
+      if (updateChartsTooltip) {
+        Object.values(charts).forEach((ch) => {
+          if (!ch) return;
+          const activeElements = ch.data.datasets.map((_, dIdx) => ({
+            datasetIndex: dIdx,
+            index: clamped
+          }));
+          ch.setActiveElements(activeElements);
+          ch.tooltip.setActiveElements(activeElements, { x: 0, y: 0 });
+          ch.update('none');
+        });
+      }
+    }
+
+    /**
+     * 載入行程陣列並刷新整個儀表板
+     */
+    function loadTripsData(tripsArray, shouldFitMap = true) {
+      try {
+        if (!Array.isArray(tripsArray) || tripsArray.length === 0) {
+          throw new Error('JSON 根層必須為非空行程陣列');
+        }
+
+        state.trips = tripsArray;
+        state.selectedTripIndex = 0;
+        const currentTrip = tripsArray[0];
+
+        const rawSensor = currentTrip.sensorData || currentTrip.data || currentTrip.samples || [];
+        const { samples, hasRealGps } = normalizeSensorData(rawSensor, currentTrip.startTime);
+
+        state.normalizedSamples = samples;
+        state.hasRealGps = hasRealGps;
+        state.gpsMode = hasRealGps ? 'real' : 'none';
+        state.activeIndex = 0;
+
+        rebuildRouteData();
+        updateSummaryAndBanner();
+        renderAllCharts();
+        renderMapRoute(shouldFitMap);
+        syncActiveIndex(0, false);
+      } catch (err) {
+        const banner = document.getElementById('statusBanner');
+        const bannerText = document.getElementById('statusBannerText');
+        banner.className = 'rounded-2xl bg-rose-500/10 border border-rose-500/30 p-4 text-rose-200 text-sm flex items-start gap-3';
+        bannerText.innerHTML = `
+          <p class="font-semibold text-rose-300">JSON 解析或載入失敗</p>
+          <p>${err.message}</p>
+        `;
+      }
+    }
+
+    /**
+     * 綁定所有 UI 事件
+     */
+    function bindEvents() {
+      // 上傳自訂 JSON 檔案
+      document.getElementById('jsonFileInput').addEventListener('change', (e) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = (ev) => {
+          try {
+            const parsed = JSON.parse(ev.target.result);
+            // 支援外層為陣列或單一行程物件兩種格式
+            const tripsList = Array.isArray(parsed) ? parsed : [parsed];
+            loadTripsData(tripsList, true);
+          } catch (parseErr) {
+            loadTripsData([], false);
+            document.getElementById('statusBannerText').innerHTML = `
+              <p class="font-semibold text-rose-300">無效的 JSON 檔案</p>
+              <p>無法解析檔案內容：${parseErr.message}</p>
+            `;
+          }
+        };
+        reader.readAsText(file);
+        e.target.value = '';
+      });
+
+      // 重新載入內建截斷片段
+      document.getElementById('loadSampleBtn').addEventListener('click', () => {
+        loadTripsData(EMBEDDED_TRIPS, true);
+      });
+
+      // 時間軸滑桿拖曳
+      document.getElementById('scrubSlider').addEventListener('input', (e) => {
+        syncActiveIndex(Number(e.target.value), true);
+      });
+
+      // 地圖模式切換按鈕
+      const modeNoneBtn = document.getElementById('modeNoneBtn');
+      const modeSimBtn = document.getElementById('modeSimBtn');
+
+      const updateModeButtonsStyle = () => {
+        if (state.gpsMode === 'simulated') {
+          modeSimBtn.className = 'px-3 py-1.5 rounded-xl text-xs sm:text-sm font-medium bg-amber-500/20 text-amber-200 border border-amber-400/60 transition';
+          modeNoneBtn.className = 'px-3 py-1.5 rounded-xl text-xs sm:text-sm font-medium bg-slate-800/70 hover:bg-slate-800 text-slate-300 border border-slate-700 transition';
+        } else {
+          modeNoneBtn.className = 'px-3 py-1.5 rounded-xl text-xs sm:text-sm font-medium bg-sky-500/20 text-sky-200 border border-sky-400/60 transition';
+          modeSimBtn.className = 'px-3 py-1.5 rounded-xl text-xs sm:text-sm font-medium bg-slate-800/70 hover:bg-slate-800 text-slate-300 border border-slate-700 transition';
+        }
+      };
+
+      modeNoneBtn.addEventListener('click', () => {
+        if (state.hasRealGps) return;
+        state.gpsMode = 'none';
+        rebuildRouteData();
+        updateSummaryAndBanner();
+        renderMapRoute(true);
+        updateModeButtonsStyle();
+      });
+
+      modeSimBtn.addEventListener('click', () => {
+        if (state.hasRealGps) return;
+        state.gpsMode = 'simulated';
+        rebuildRouteData();
+        updateSummaryAndBanner();
+        renderMapRoute(true);
+        updateModeButtonsStyle();
+      });
+
+      // 套用自訂起點與縮放倍率
+      document.getElementById('applyCoordsBtn').addEventListener('click', () => {
+        const latVal = parseFloat(document.getElementById('startLatInput').value);
+        const lngVal = parseFloat(document.getElementById('startLngInput').value);
+        const scaleVal = parseFloat(document.getElementById('simScaleInput').value);
+
+        if (Number.isFinite(latVal) && Math.abs(latVal) <= 90) state.startLat = latVal;
+        if (Number.isFinite(lngVal) && Math.abs(lngVal) <= 180) state.startLng = lngVal;
+        if (Number.isFinite(scaleVal) && scaleVal > 0) state.simScale = scaleVal;
+
+        if (!state.hasRealGps && state.gpsMode === 'none') {
+          state.gpsMode = 'simulated';
+          updateModeButtonsStyle();
+        }
+
+        rebuildRouteData();
+        updateSummaryAndBanner();
+        renderMapRoute(true);
+        syncActiveIndex(state.activeIndex, false);
+      });
+
+      // 置中地圖
+      document.getElementById('centerMapBtn').addEventListener('click', () => {
+        renderMapRoute(true);
+      });
+    }
+
+    // 初始化應用程式
+    window.addEventListener('DOMContentLoaded', () => {
+      bindEvents();
+      loadTripsData(EMBEDDED_TRIPS, true);
+    });
+  </script>
+</body>
+</html>
