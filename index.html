@@ -202,7 +202,10 @@
           <div class="calib-bar" id="calibBar"></div>
         </div>
         <div id="calibStatus">等待開始...</div>
-        <button class="btn btn-primary" onclick="app.startCalibrationProcess()">開始校準 (3秒)</button>
+        <div class="calib-actions">
+          <button class="btn btn-primary" onclick="app.startCalibrationProcess()">開始校準 (3秒)</button>
+          <button class="btn btn-ghost" onclick="app.cancelCalibration()">取消</button>
+        </div>
       </div>
     </div>
   </div>

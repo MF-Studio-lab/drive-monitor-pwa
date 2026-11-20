@@ -31,6 +31,9 @@ class DriveMonitorApp {
     // Sampling settings
     this.sampleInterval = 50; // ms (default 50ms = 20Hz)
     
+    // Detect if running on desktop without sensors
+    this.isDesktopNoSensors = this.detectDesktopNoSensors();
+    
     this.init().catch(err => {
       console.error('App init failed:', err);
       // Even if init fails, try to show permission modal so user can interact
@@ -95,6 +98,16 @@ class DriveMonitorApp {
     const perms = await this.sensors.checkPermissions();
     this.updatePermissionUI(perms);
     
+    // Auto-skip calibration on desktop without sensors
+    if (this.isDesktopNoSensors) {
+      console.log('Desktop without sensors detected - skipping calibration');
+      this.hideModal('permModal');
+      document.getElementById('btnStartSensors').style.display = 'none';
+      // Set dummy calibration data for desktop
+      this.calibrationData = { x: 0, y: 0, z: 0 };
+      return;
+    }
+    
     if (!perms.sensors || !perms.gps) {
       this.showModal('permModal');
       document.getElementById('btnStartSensors').style.display = 'inline-flex';
@@ -109,6 +122,14 @@ class DriveMonitorApp {
   async requestPermissions() {
     const perms = await this.sensors.requestPermissions();
     this.updatePermissionUI(perms);
+    
+    // On desktop without sensors, permissions will always fail - skip
+    if (this.isDesktopNoSensors) {
+      console.log('Desktop without sensors - skipping sensor start');
+      this.hideModal('permModal');
+      document.getElementById('btnStartSensors').style.display = 'none';
+      return;
+    }
     
     if (perms.sensors && perms.gps) {
       this.hideModal('permModal');
@@ -601,6 +622,32 @@ class DriveMonitorApp {
 
   hideModal(id) {
     document.getElementById(id).classList.add('hidden');
+  }
+
+  cancelCalibration() {
+    if (this.isCalibrating) {
+      this.sensors.offTempData(() => {}); // Clear temp callback
+      this.isCalibrating = false;
+      this.calibrationSamples = [];
+    }
+    this.hideModal('calibModal');
+    // Reset button state
+    const btn = document.querySelector('#calibModal .btn-primary');
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = '開始校準 (3秒)';
+      btn.onclick = () => this.startCalibrationProcess();
+    }
+  }
+
+  detectDesktopNoSensors() {
+    // Check if running on desktop (non-mobile) AND no DeviceMotionEvent support
+    const isMobile = /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+    const hasDeviceMotion = 'DeviceMotionEvent' in window;
+    const hasDeviceOrientation = 'DeviceOrientationEvent' in window;
+    
+    // Desktop without sensors: not mobile, no devicemotion, no deviceorientation
+    return !isMobile && !hasDeviceMotion && !hasDeviceOrientation;
   }
 }
 

@@ -175,6 +175,9 @@ body {
 .calib-bar::after { content: ''; display: block; height: 100%; width: var(--progress, 0%); background: var(--accent); transition: width 0.1s linear; }
 #calibStatus { font-size: 0.8rem; color: var(--text-muted); text-align: center; margin-bottom: 16px; }
 
+.calib-actions { display: flex; gap: 8px; justify-content: center; }
+.calib-actions .btn { flex: 1; max-width: 140px; }
+
 /* Responsive */
 @media (max-width: 480px) {
   .cards-row, .env-cards { grid-template-columns: repeat(3, 1fr); gap: 6px; }

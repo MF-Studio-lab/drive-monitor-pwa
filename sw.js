@@ -12,7 +12,7 @@ const ASSETS = [
   './api.js',
   './icon-192.png',
   './icon-512.png',
-  'https://cdn.jsdelivr.net/npm/uplot@1.6.27/dist/uPlot.min.js',
+  'https://cdn.jsdelivr.net/npm/uplot@1.6.27/dist/uPlot.iife.min.js',
   'https://cdn.jsdelivr.net/npm/uplot@1.6.27/dist/uPlot.min.css',
   'https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js',
   'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js',
